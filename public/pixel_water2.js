@@ -3,7 +3,10 @@ import * as THREE from 'three';
 import { OrbitControls } from './jsm/controls/OrbitControls.js';
 import { EffectComposer } from './jsm/postprocessing/EffectComposer.js';
 import { RenderPixelatedPass } from './jsm/postprocessing/RenderPixelatedPass.js';
+import { RenderPass } from './jsm/postprocessing/RenderPass.js';
 import { OutputPass } from './jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from './jsm/postprocessing/ShaderPass.js';
+import { PaletteShader } from '/palette_shader.js';
 import Stats from './jsm/libs/stats.module.js';
 import { GUI } from './jsm/libs/lil-gui.module.min.js';
 import { Water } from './jsm/objects/Water2.js';
@@ -47,11 +50,18 @@ function init() {
     document.body.appendChild( renderer.domElement );
 
     composer = new EffectComposer( renderer );
+
     const renderPixelatedPass = new RenderPixelatedPass( 6, scene, camera );
     composer.addPass( renderPixelatedPass );
 
     const outputPass = new OutputPass();
     composer.addPass( outputPass );
+
+    const paletteUniform = [ new THREE.Color( 0xff0000 ), new THREE.Color( 0x00ff00 ), new THREE.Color( 0x00ffee ) ];
+    
+    const PaletteShaderPass = new ShaderPass( PaletteShader );
+    PaletteShaderPass.uniforms[ 'palette' ].value = paletteUniform;
+    composer.addPass( PaletteShaderPass );
 
     window.addEventListener( 'resize', onWindowResize );
 
