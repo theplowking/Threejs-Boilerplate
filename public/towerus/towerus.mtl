@@ -1,0 +1,36 @@
+# Apple ModelI/O MTL File: towerus.mtl
+
+newmtl material_0
+	map_Kd material_0-color.png
+	Kd 1 1 1
+	Ka 0 0 0
+	Ks 0
+	ao 0
+	subsurface 0
+	map_metallic material_0-metallic.png
+	specularTint 0
+	map_roughness material_0-roughness.png
+	anisotropicRotation 0
+	sheen 0.05
+	sheenTint 0
+	clearCoat 0
+	clearCoatGloss 0
+	map_tangentSpaceNormal material_0-normal.png
+
+newmtl material_1
+	map_Kd material_1-color.png
+	Kd 1 1 1
+	Ka 0 0 0
+	Ks 0
+	ao 0
+	subsurface 0
+	map_metallic material_1-metallic.png
+	specularTint 0
+	map_roughness material_1-roughness.png
+	anisotropicRotation 0
+	sheen 0.05
+	sheenTint 0
+	clearCoat 0
+	clearCoatGloss 0
+	map_tangentSpaceNormal material_1-normal.png
+

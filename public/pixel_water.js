@@ -4,6 +4,10 @@ import { OrbitControls } from './jsm/controls/OrbitControls.js';
 import { EffectComposer } from './jsm/postprocessing/EffectComposer.js';
 import { RenderPixelatedPass } from './jsm/postprocessing/RenderPixelatedPass.js';
 import { OutputPass } from './jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from './jsm/postprocessing/ShaderPass.js';
+import { PaletteShader } from '/palette_shader.js';
+import { C64Shader } from '/c64_shader.js';
+import { DitheShader } from '/dither_shader.js';
 import Stats from './jsm/libs/stats.module.js';
 import { GUI } from './jsm/libs/lil-gui.module.min.js';
 import { Water } from './jsm/objects/Water.js';
@@ -43,6 +47,22 @@ function init() {
 
     const outputPass = new OutputPass();
     composer.addPass( outputPass );
+
+    const paletteUniform = [ new THREE.Color( 0xFDC5B6),
+                                                new THREE.Color( 0xC8DCDC),
+                                                    new THREE.Color( 0xEEE0BE),
+                                                        new THREE.Color( 0xF5FEEA),
+                                                            new THREE.Color( 0xFFFFFF),
+                                                                new THREE.Color( 0xFFFFCC),
+                                                                    new THREE.Color( 0xB4B7AD),
+                                                                        new THREE.Color( 0xBFD6DA),
+                                                                            new THREE.Color( 0x68777D),
+                                                                                new THREE.Color( 0x6C7C84)];
+
+    
+    const PaletteShaderPass = new ShaderPass( PaletteShader );
+    PaletteShaderPass.uniforms[ 'palette' ].value = paletteUniform;
+    composer.addPass( PaletteShaderPass );
 
     window.addEventListener( 'resize', onWindowResize );
 

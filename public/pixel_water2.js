@@ -7,6 +7,8 @@ import { RenderPass } from './jsm/postprocessing/RenderPass.js';
 import { OutputPass } from './jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from './jsm/postprocessing/ShaderPass.js';
 import { PaletteShader } from '/palette_shader.js';
+import { C64Shader } from '/c64_shader.js';
+import { DitheShader } from '/dither_shader.js';
 import Stats from './jsm/libs/stats.module.js';
 import { GUI } from './jsm/libs/lil-gui.module.min.js';
 import { Water } from './jsm/objects/Water2.js';
@@ -59,7 +61,7 @@ function init() {
 
     const paletteUniform = [ new THREE.Color( 0xff0000 ), new THREE.Color( 0x00ff00 ), new THREE.Color( 0x00ffee ) ];
     
-    const PaletteShaderPass = new ShaderPass( PaletteShader );
+    const PaletteShaderPass = new ShaderPass( DitheShader );
     PaletteShaderPass.uniforms[ 'palette' ].value = paletteUniform;
     composer.addPass( PaletteShaderPass );
 
