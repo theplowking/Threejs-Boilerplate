@@ -29,7 +29,7 @@ function init() {
     const aspectRatio = window.innerWidth / window.innerHeight;
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(30, 30, 100);
+    camera.position.set(30, 30, 50);
     // camera = new THREE.OrthographicCamera( - aspectRatio, aspectRatio, 1, - 1, 0.1, 10 );
     // camera.position.y = 2 * Math.tan( Math.PI / 6 );
     // camera.position.z = 2;
@@ -78,7 +78,9 @@ function init() {
         // gui
 
     gui = new GUI();
-    params = { pixelSize: 6, normalEdgeStrength: .3, depthEdgeStrength: .4, pixelAlignedPanning: true };
+    params = { pixelSize: 6, normalEdgeStrength: .3, depthEdgeStrength: .4, pixelAlignedPanning: true,
+        sunColor: 0xeeffee,
+        waterColor: 0x001e0 };
     gui.add( params, 'pixelSize' ).min( 1 ).max( 16 ).step( 1 )
         .onChange( () => {
 
@@ -95,12 +97,22 @@ function init() {
     // threeTone.minFilter = THREE.NearestFilter
     // threeTone.magFilter = THREE.NearestFilter
 
-    // var materialBuilding = new THREE.MeshPhongMaterial( { color: 0xdc9d82, specular: 0x111111, shininess: 2 } ); //0xff5533 //0xefdab1
-    // materialBuilding.flatShading = true
+    //var materialBuilding = new THREE.MeshPhongMaterial( { color: 0xdc9d82, specular: 0x111111, shininess: 2 } ); //0xff5533 //0xefdab1
+    
+    //materialBuilding.flatShading = true
 
+    const bumpTexture = new THREE.TextureLoader().load('textures/calacatta.png')
+    bumpTexture.wrapS = THREE.RepeatWrapping;
+    bumpTexture.wrapT = THREE.RepeatWrapping;
+    bumpTexture.repeat.set( 6, 6 );
+    // material.
+    // material.
     const materialBuilding = new THREE.MeshStandardMaterial({
-        roughness: 0
+        roughness: 0,
+        bumpMap: bumpTexture,
+        bumpScale: 0.1
     });
+    
     // basic monochromatic energy preservation
     //const diffuseColor = new THREE.Color().setHSL( alpha, 0.5, gamma * 0.5 + 0.1 ).multiplyScalar( 1 - beta * 0.2 );
 
@@ -111,30 +123,56 @@ function init() {
 
     //objects
 
-    const loader = new STLLoader();
-    loader.load( 'tower.stl', function ( geometry ) {
+    // const loader = new OBJLoader();
+    // loader.load( '/towerus/monkey.obj', function ( geometry ) {
 
-        const mesh = new THREE.Mesh( geometry, materialBuilding );
+    //     const mesh = new THREE.Mesh( geometry, materialBuilding );
 
-        mesh.position.set( 0, -25,0 );
-        mesh.rotation.set( - Math.PI / 2, 0,  0 );
-        //mesh.scale.set( 0.02, 0.02, 0.02 );
-        let s=10;
-        mesh.scale.set( s, s, s );
+    //     mesh.position.set( 0, -25,0 );
+    //     mesh.rotation.set( - Math.PI / 2, 0,  0 );
+    //     //mesh.scale.set( 0.02, 0.02, 0.02 );
+    //     let s=10;
+    //     mesh.scale.set( s, s, s );
 
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
+    //     mesh.castShadow = true;
+    //     mesh.receiveShadow = true;
 
-        scene.add( mesh );
+    //     scene.add( mesh );
 
-    } );
+    // } );
+
+    // const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true })
+
+    const objLoader = new OBJLoader()
+    objLoader.load(
+        '/towerus/towerus.obj',
+        (object) => {
+            object.children[0].material = materialBuilding
+            object.traverse(function (child) {
+                if (child.isMesh) {
+                    child.material = materialBuilding
+                }
+            })
+            let s=10;
+            object.position.set( 0, -25,0 );
+            object.rotation.set( - Math.PI / 2, 0,  0 );
+            object.scale.set( s, s, s );
+            scene.add(object)
+        },
+        (xhr) => {
+            console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
+        },
+        (error) => {
+            console.log(error)
+        }
+    )
     
     //water
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.maxPolarAngle = Math.PI * 0.495;
     controls.target.set(0, 10, 0);
-    controls.minDistance = 40.0;
+    controls.minDistance = 10.0;
     controls.maxDistance = 200.0;
     //controls.maxZoom = 2;
 
@@ -149,8 +187,8 @@ function init() {
         }),
         alpha: 1.0,
         sunDirection: new THREE.Vector3(),
-        sunColor: 0xeeffee,
-        waterColor: 0x001e0f,
+        sunColor: params.sunColor,
+        waterColor: params.waterColor,
         distortionScale: 3.7,
         fog: scene.fog !== undefined
     }
@@ -240,8 +278,17 @@ function init() {
     const waterFolder = gui.addFolder('Water');
     waterFolder.add(water.material.uniforms.distortionScale, 'value', 0, 8, 0.1).name('distortionScale');
     waterFolder.add(water.material.uniforms.size, 'value', 0.1, 10, 0.1).name('size');
-    waterFolder.add(water.material, 'opacity', 0, 1, 0.01).name('opacity');
-    
+    waterFolder.add(water.material.uniforms.alpha, 'value', 0, 1, 0.01).name('alpha');
+    waterFolder.addColor(params, 'sunColor')
+				.name('Sun Color')
+				.onChange(function() {
+					water.material.uniforms.sunColor.value.set(params.sunColor);
+				});
+    waterFolder.addColor(params, 'waterColor')
+				.name('Water Color')
+				.onChange(function() {
+					water.material.uniforms.waterColor.value.set(params.waterColor);
+				});
     waterFolder.open();
         
 
