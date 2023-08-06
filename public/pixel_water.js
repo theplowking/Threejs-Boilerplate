@@ -12,6 +12,10 @@ import Stats from './jsm/libs/stats.module.js';
 import { GUI } from './jsm/libs/lil-gui.module.min.js';
 import { Water } from './jsm/objects/Water.js';
 import { Sky } from './jsm/objects/Sky.js';
+import { OBJLoader } from './jsm/loaders/OBJLoader.js';
+
+import { STLLoader } from "./jsm/loaders/STLLoader.js";
+import { GLTFLoader } from "./jsm/loaders/GLTFLoader.js";
 
 let camera, scene, renderer, composer, crystalMesh, clock;
 let gui, params;
@@ -39,10 +43,15 @@ function init() {
     renderer.shadowMap.enabled = true;
     //renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight );
+
+    //from sun settings
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+	renderer.toneMappingExposure = 0.5;
+
     document.body.appendChild( renderer.domElement );
 
     composer = new EffectComposer( renderer );
-    const renderPixelatedPass = new RenderPixelatedPass( 6, scene, camera );
+    const renderPixelatedPass = new RenderPixelatedPass( 1, scene, camera );
     composer.addPass( renderPixelatedPass );
 
     const outputPass = new OutputPass();
@@ -62,7 +71,7 @@ function init() {
     
     const PaletteShaderPass = new ShaderPass( PaletteShader );
     PaletteShaderPass.uniforms[ 'palette' ].value = paletteUniform;
-    composer.addPass( PaletteShaderPass );
+    //composer.addPass( PaletteShaderPass );
 
     window.addEventListener( 'resize', onWindowResize );
 
@@ -79,6 +88,46 @@ function init() {
     gui.add( renderPixelatedPass, 'normalEdgeStrength' ).min( 0 ).max( 2 ).step( .05 );
     gui.add( renderPixelatedPass, 'depthEdgeStrength' ).min( 0 ).max( 1 ).step( .05 );
     gui.add( params, 'pixelAlignedPanning' );
+
+    //materials
+
+    // const threeTone = new THREE.TextureLoader().load('threeTone.jpg')
+    // threeTone.minFilter = THREE.NearestFilter
+    // threeTone.magFilter = THREE.NearestFilter
+
+    // var materialBuilding = new THREE.MeshPhongMaterial( { color: 0xdc9d82, specular: 0x111111, shininess: 2 } ); //0xff5533 //0xefdab1
+    // materialBuilding.flatShading = true
+
+    const materialBuilding = new THREE.MeshStandardMaterial({
+        roughness: 0
+    });
+    // basic monochromatic energy preservation
+    //const diffuseColor = new THREE.Color().setHSL( alpha, 0.5, gamma * 0.5 + 0.1 ).multiplyScalar( 1 - beta * 0.2 );
+
+    // const materialBuilding = new THREE.MeshToonMaterial( {
+    //     color: 0xdc9d82,
+    //     gradientMap: threeTone
+    // } );
+
+    //objects
+
+    const loader = new STLLoader();
+    loader.load( 'tower.stl', function ( geometry ) {
+
+        const mesh = new THREE.Mesh( geometry, materialBuilding );
+
+        mesh.position.set( 0, -25,0 );
+        mesh.rotation.set( - Math.PI / 2, 0,  0 );
+        //mesh.scale.set( 0.02, 0.02, 0.02 );
+        let s=10;
+        mesh.scale.set( s, s, s );
+
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        scene.add( mesh );
+
+    } );
     
     //water
 
@@ -100,7 +149,7 @@ function init() {
         }),
         alpha: 1.0,
         sunDirection: new THREE.Vector3(),
-        sunColor: 0xffffff,
+        sunColor: 0xeeffee,
         waterColor: 0x001e0f,
         distortionScale: 3.7,
         fog: scene.fog !== undefined
@@ -114,30 +163,48 @@ function init() {
     sky.scale.setScalar(10000);
     scene.add(sky);
 
-    let uniforms = sky.material.uniforms;
-    uniforms['turbidity'].value = 10;
-    uniforms['rayleigh'].value = 2;
-    uniforms['mieCoefficient'].value = 0.005;
-    uniforms['mieDirectionalG'].value = 0.8;
-
-    const parameters = {
-        inclination: 0.49,
-        azimuth: 0.205
+    const effectController = {
+        turbidity: 10,
+        rayleigh: 3,
+        mieCoefficient: 0.005,
+        mieDirectionalG: 0.7,
+        elevation: 2,
+        azimuth: 180,
+        exposure: renderer.toneMappingExposure
     };
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
 
     function updateSun() {
 
-        var theta = Math.PI * (parameters.inclination - 0.5);
-        var phi = 2 * Math.PI * (parameters.azimuth - 0.5);
+        const uniforms = sky.material.uniforms;
+        uniforms[ 'turbidity' ].value = effectController.turbidity;
+        uniforms[ 'rayleigh' ].value = effectController.rayleigh;
+        uniforms[ 'mieCoefficient' ].value = effectController.mieCoefficient;
+        uniforms[ 'mieDirectionalG' ].value = effectController.mieDirectionalG;
 
-        sun.x = Math.cos(phi);
-        sun.y = Math.sin(phi) * Math.sin(theta);
-        sun.z = Math.sin(phi) * Math.cos(theta);
+        const phi = THREE.MathUtils.degToRad( 90 - effectController.elevation );
+        const theta = THREE.MathUtils.degToRad( effectController.azimuth );
+
+        sun.setFromSphericalCoords( 1, phi, theta );
 
         sky.material.uniforms['sunPosition'].value.copy(sun);
         water.material.uniforms['sunDirection'].value.copy(sun).normalize();
+
+        uniforms[ 'sunPosition' ].value.copy( sun );
+
+        renderer.toneMappingExposure = effectController.exposure;
+        renderer.render( scene, camera );
+
+        // var theta = Math.PI * (parameters.inclination - 0.5);
+        // var phi = 2 * Math.PI * (parameters.azimuth - 0.5);
+
+        // sun.x = Math.cos(phi);
+        // sun.y = Math.sin(phi) * Math.sin(theta);
+        // sun.z = Math.sin(phi) * Math.cos(theta);
+
+        // sky.material.uniforms['sunPosition'].value.copy(sun);
+        // water.material.uniforms['sunDirection'].value.copy(sun).normalize();
 
         scene.environment = pmremGenerator.fromScene(sky).texture;
     }
@@ -149,14 +216,25 @@ function init() {
         roughness: 0
     });
 
-    cube = new THREE.Mesh(geometry, material);
-    scene.add(cube);
+    //cube
+    // cube = new THREE.Mesh(geometry, material);
+    // let s=0.1;
+    // cube.scale.set( s, s, s );
+    // scene.add(cube);
 
     //end water
 
     const skyFolder = gui.addFolder('Sky');
-    skyFolder.add(parameters, 'inclination', 0, 0.5, 0.0001).onChange(updateSun);
-    skyFolder.add(parameters, 'azimuth', 0, 1, 0.0001).onChange(updateSun);
+    // skyFolder.add(parameters, 'inclination', 0, 0.5, 0.0001).onChange(updateSun);
+    // skyFolder.add(parameters, 'azimuth', 0, 1, 0.0001).onChange(updateSun);
+
+        skyFolder.add( effectController, 'turbidity', 0.0, 20.0, 0.1 ).onChange( updateSun );
+        skyFolder.add( effectController, 'rayleigh', 0.0, 4, 0.001 ).onChange( updateSun );
+        skyFolder.add( effectController, 'mieCoefficient', 0.0, 0.1, 0.001 ).onChange( updateSun );
+        skyFolder.add( effectController, 'mieDirectionalG', 0.0, 1, 0.001 ).onChange( updateSun );
+        skyFolder.add( effectController, 'elevation', 0, 90, 0.1 ).onChange( updateSun );
+        skyFolder.add( effectController, 'azimuth', - 180, 180, 0.1 ).onChange( updateSun );
+        skyFolder.add( effectController, 'exposure', 0, 1, 0.0001 ).onChange( updateSun );
     skyFolder.open();
 
     const waterFolder = gui.addFolder('Water');
@@ -187,11 +265,11 @@ function animate() {
 
     var time = performance.now() * 0.001;
 
-    cube.position.y = Math.sin(time) * 20 + 5;
-    cube.rotation.x = time * 0.5;
-    cube.rotation.z = time * 0.51;
+    // cube.position.y = Math.sin(time) * 20 + 5;
+    // cube.rotation.x = time * 0.5;
+    // cube.rotation.z = time * 0.51;
 
-    water.material.uniforms['time'].value += 1.0 / 60.0;
+    water.material.uniforms['time'].value += 1.0 / 60.0 / 10;
 
     const rendererSize = renderer.getSize( new THREE.Vector2() );
     const aspectRatio = rendererSize.x / rendererSize.y;
