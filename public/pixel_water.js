@@ -17,9 +17,16 @@ import { OBJLoader } from './jsm/loaders/OBJLoader.js';
 import { STLLoader } from "./jsm/loaders/STLLoader.js";
 import { GLTFLoader } from "./jsm/loaders/GLTFLoader.js";
 
+
+import { ImprovedNoise } from './jsm/math/ImprovedNoise.js';
+
+import particleFire from './node/three-particle-fire/dist/three-particle-fire.module.js';
+
+particleFire.install( { THREE: THREE } );
+
 let camera, scene, renderer, composer, crystalMesh, clock;
 let gui, params;
-let sun, sky, water, cube;
+let sun, sky, water, cube, particleFireMesh0, light;
 
 init();
 animate();
@@ -29,10 +36,14 @@ function init() {
     const aspectRatio = window.innerWidth / window.innerHeight;
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(30, 30, 50);
-    // camera = new THREE.OrthographicCamera( - aspectRatio, aspectRatio, 1, - 1, 0.1, 10 );
+    //camera.position.set(30, 30, 50);
+    camera.position.set(-8.211999317769644, 11.9333257833447, 43.87784171728374);
+    camera.rotation.set(-0.18255017207725938,-0.1476826359968106,-0.02715733610671468);
+
+    // camera = new THREE.OrthographicCamera( - aspectRatio, aspectRatio, 1, - 1, 0.1, 1000 );
     // camera.position.y = 2 * Math.tan( Math.PI / 6 );
     // camera.position.z = 2;
+    camera.zoom = 4;
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color( 0x151729 );
@@ -51,27 +62,49 @@ function init() {
     document.body.appendChild( renderer.domElement );
 
     composer = new EffectComposer( renderer );
-    const renderPixelatedPass = new RenderPixelatedPass( 1, scene, camera );
+    const renderPixelatedPass = new RenderPixelatedPass( 6, scene, camera );
     composer.addPass( renderPixelatedPass );
 
     const outputPass = new OutputPass();
     composer.addPass( outputPass );
 
-    const paletteUniform = [ new THREE.Color( 0xFDC5B6),
-                                                new THREE.Color( 0xC8DCDC),
-                                                    new THREE.Color( 0xEEE0BE),
-                                                        new THREE.Color( 0xF5FEEA),
-                                                            new THREE.Color( 0xFFFFFF),
-                                                                new THREE.Color( 0xFFFFCC),
-                                                                    new THREE.Color( 0xB4B7AD),
-                                                                        new THREE.Color( 0xBFD6DA),
-                                                                            new THREE.Color( 0x68777D),
-                                                                                new THREE.Color( 0x6C7C84)];
+    // const paletteUniform = [ new THREE.Color( 0xFDC5B6),
+    //                                             new THREE.Color( 0xC8DCDC),
+    //                                                 new THREE.Color( 0xEEE0BE),
+    //                                                     new THREE.Color( 0xF5FEEA),
+    //                                                         new THREE.Color( 0xFFFFFF),
+    //                                                             new THREE.Color( 0xFFFFCC),
+    //                                                                 new THREE.Color( 0xB4B7AD),
+    //                                                                     new THREE.Color( 0xBFD6DA),
+    //                                                                         new THREE.Color( 0x68777D),
+    //                                                                             new THREE.Color( 0x6C7C84),
+    //                                                                             new THREE.Color( 0x1D4128)];
+    
 
+    // const paletteSource = [0xFEA85A, 0xB24324, 0xDFB878, 0xF59965, 0xA0965C, 0x1A1B0F,
+    //                         0x968B63, 0xD18733, 0xFA4120, 0xAE0C0E,
+    //                         0x1D4128]
+    const paletteSource = [
+        //sun 
+        0xFFAC5D,
+        //sky 
+        0xC98C50, 0xD6A96F, 0x8C8754, 0xAF5A33, 0xA29663,
+        //base 
+        0x151108, 0x3D170E, 0x2A482D, 0x9B845C, 0xB32E22, 0x877A57, 0x925D41, 0x6C523B ]
+        
+        //0xD6B98A, 0xE29F5E, 0xB1A487, 0x97977A, 0x8B8E7A, 0x828A75, 0xCA6B2C, 0x6C7C6A, 0xD14521, 0x61725D, 0x263D2A, 0x283929, 0x2B382A, 0x1B150A, 0x161106, 0x161106]
+
+    let paletteUniform = [];
+    paletteSource.forEach(function (colPal, index) {
+        paletteUniform.push(new THREE.Color( colPal).convertLinearToSRGB());
+        });                                           
+    console.log(paletteSource, paletteUniform, paletteUniform.length);
+    paletteUniform.forEach((e) => {console.log("0x" + e.getHexString() +  ",");});
     
     const PaletteShaderPass = new ShaderPass( PaletteShader );
     PaletteShaderPass.uniforms[ 'palette' ].value = paletteUniform;
-    //composer.addPass( PaletteShaderPass );
+    PaletteShaderPass.uniforms[ 'paletteSize' ].value = paletteUniform.length;
+    composer.addPass( PaletteShaderPass );
 
     window.addEventListener( 'resize', onWindowResize );
 
@@ -79,8 +112,9 @@ function init() {
 
     gui = new GUI();
     params = { pixelSize: 6, normalEdgeStrength: .3, depthEdgeStrength: .4, pixelAlignedPanning: true,
-        sunColor: 0xeeffee,
-        waterColor: 0x001e0 };
+        sunColor: 0xc0540c,
+        waterColor: 0x13aa63,
+        towerColor: 0x9B9665 };
     gui.add( params, 'pixelSize' ).min( 1 ).max( 16 ).step( 1 )
         .onChange( () => {
 
@@ -110,7 +144,9 @@ function init() {
     const materialBuilding = new THREE.MeshStandardMaterial({
         roughness: 0,
         bumpMap: bumpTexture,
-        bumpScale: 0.1
+        bumpScale: 0.1,
+        color: params.towerColor,
+        flatShading: true
     });
     
     // basic monochromatic energy preservation
@@ -154,7 +190,7 @@ function init() {
                 }
             })
             let s=10;
-            object.position.set( 0, -25,0 );
+            object.position.set( 0, -35,0 );
             object.rotation.set( - Math.PI / 2, 0,  0 );
             object.scale.set( s, s, s );
             scene.add(object)
@@ -206,7 +242,7 @@ function init() {
         rayleigh: 3,
         mieCoefficient: 0.005,
         mieDirectionalG: 0.7,
-        elevation: 2,
+        elevation: 0,
         azimuth: 180,
         exposure: renderer.toneMappingExposure
     };
@@ -249,17 +285,6 @@ function init() {
 
     updateSun();
 
-    const geometry = new THREE.BoxGeometry(30, 30, 30);
-    const material = new THREE.MeshStandardMaterial({
-        roughness: 0
-    });
-
-    //cube
-    // cube = new THREE.Mesh(geometry, material);
-    // let s=0.1;
-    // cube.scale.set( s, s, s );
-    // scene.add(cube);
-
     //end water
 
     const skyFolder = gui.addFolder('Sky');
@@ -273,7 +298,7 @@ function init() {
         skyFolder.add( effectController, 'elevation', 0, 90, 0.1 ).onChange( updateSun );
         skyFolder.add( effectController, 'azimuth', - 180, 180, 0.1 ).onChange( updateSun );
         skyFolder.add( effectController, 'exposure', 0, 1, 0.0001 ).onChange( updateSun );
-    skyFolder.open();
+    skyFolder.close();
 
     const waterFolder = gui.addFolder('Water');
     waterFolder.add(water.material.uniforms.distortionScale, 'value', 0, 8, 0.1).name('distortionScale');
@@ -289,8 +314,50 @@ function init() {
 				.onChange(function() {
 					water.material.uniforms.waterColor.value.set(params.waterColor);
 				});
-    waterFolder.open();
-        
+    waterFolder.addColor(params, 'towerColor')
+				.name('Tower Color')
+				.onChange(function() {
+					materialBuilding.color.set(params.towerColor);
+				});
+    waterFolder.close();
+
+    const paletteFolder = gui.addFolder('Palette');
+
+    paletteUniform.forEach(function (colPal, index) {
+        paletteUniform.push(new THREE.Color( colPal));
+        paletteFolder.addColor(paletteUniform, index)
+				.name(index)
+				.onChange(function(col) {
+                    //console.log(col, col.getHexString());
+					PaletteShaderPass.uniforms[ 'palette' ].value = paletteUniform;
+                    let t=[];
+                    paletteUniform.forEach((e) => {t.push("0x" + e.getHexString());}); //convertLinearToSRGB()
+                    console.log(t.slice(0,paletteSource.length));
+				});
+    }); 
+
+    paletteFolder.open();
+
+    //add fire
+
+    var fireRadius = 1;
+    var fireHeight = 5;
+    var particleCount = 2000;
+    var height = window.innerHeight;
+
+    var geometry0 = new particleFire.Geometry( fireRadius, fireHeight, particleCount );
+    var material0 = new particleFire.Material( { color: 0xff2200 } );
+    material0.setPerspective( camera.fov, height );
+    particleFireMesh0 = new THREE.Points( geometry0, material0 );
+    particleFireMesh0.position.set( 0, 5,0 );
+    scene.add( particleFireMesh0 );
+
+    //add fire light
+    light = new THREE.PointLight( 0xff2200, 100, 100, 1 ); //0xffffff //0xa333b6
+    //light.position.set( 0, 16, 0  );
+    light.castShadow = true;
+    //light.shadow.bias = 0.0001;
+    scene.add( light );
 
 }
 
@@ -303,6 +370,8 @@ function onWindowResize() {
 
     renderer.setSize( window.innerWidth, window.innerHeight );
     composer.setSize( window.innerWidth, window.innerHeight );
+
+    console.log(camera);
 
 }
 
@@ -317,6 +386,12 @@ function animate() {
     // cube.rotation.z = time * 0.51;
 
     water.material.uniforms['time'].value += 1.0 / 60.0 / 10;
+
+    flickerAnimation(time);
+
+    var delta = clock.getDelta();
+
+    particleFireMesh0.material.update( time / 10000 );
 
     const rendererSize = renderer.getSize( new THREE.Vector2() );
     const aspectRatio = rendererSize.x / rendererSize.y;
@@ -410,3 +485,17 @@ function pixelAlignFrustum( camera, aspectRatio, pixelsPerScreenWidth, pixelsPer
     camera.updateProjectionMatrix();
 
 }
+
+// Define the flicker animation
+function flickerAnimation(time) {
+    // Randomly adjust the intensity and distance of the light
+    const intensity = (new ImprovedNoise().noise(time*2, 0, 0) * 10) + 20; //THREE.MathUtils.randFloat(0.8, 1.0);
+    const distance = (new ImprovedNoise().noise(time, 0, 0) * 2) + 20;
+    light.intensity = intensity;
+    light.distance = distance;
+    var range = 0.1;
+    light.position.set( particleFireMesh0.position.x + (new ImprovedNoise().noise(time*2, 0, 0) * range) - (range*2),
+                        particleFireMesh0.position.y + (new ImprovedNoise().noise(0, time*2, 0) * range) - (range*2),
+                        particleFireMesh0.position.z + 2 + (new ImprovedNoise().noise(0, 0, time*2) * range) - (range*2) );
+
+};

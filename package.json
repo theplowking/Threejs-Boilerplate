@@ -22,6 +22,7 @@
   "homepage": "https://github.com/Sean-Bradley/Threejs-Boilerplate#readme",
   "dependencies": {
     "express": "^4.18.2",
-    "three": "^0.155.0"
+    "three": "^0.155.0",
+    "three-particle-fire": "^0.1.0"
   }
 }

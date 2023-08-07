@@ -10,6 +10,7 @@ const PaletteShader = {
       'tDiffuse': { value: null },
       'opacity': { value: 1.0 },
       'palette': { value: null }, // Pass the palette array as a uniform
+      'paletteSize': { value: null }
     },
   
     vertexShader: /* glsl */`
@@ -25,8 +26,9 @@ const PaletteShader = {
   
       uniform float opacity;
       uniform sampler2D tDiffuse;
-      uniform vec3 palette[10];   // The palette of available colors
-      const int paletteSize = 10; // Update this with the actual size of the palette
+      uniform int paletteSize; // Update this with the actual size of the palette
+      uniform vec3 palette[11];   // The palette of available colors
+
   
       varying vec2 vUv;
   
