@@ -27,7 +27,7 @@ const PaletteShader = {
       uniform float opacity;
       uniform sampler2D tDiffuse;
       uniform int paletteSize; // Update this with the actual size of the palette
-      uniform vec3 palette[11];   // The palette of available colors
+      uniform vec3 palette[14];   // The palette of available colors
 
   
       varying vec2 vUv;

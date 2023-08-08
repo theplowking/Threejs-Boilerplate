@@ -99,7 +99,7 @@ function init() {
         paletteUniform.push(new THREE.Color( colPal).convertLinearToSRGB());
         });                                           
     console.log(paletteSource, paletteUniform, paletteUniform.length);
-    paletteUniform.forEach((e) => {console.log("0x" + e.getHexString() +  ",");});
+    paletteUniform.forEach((e) => {console.log("0x" + e.clone().convertSRGBToLinear().getHexString() +  ",");});
     
     const PaletteShaderPass = new ShaderPass( PaletteShader );
     PaletteShaderPass.uniforms[ 'palette' ].value = paletteUniform;
@@ -328,10 +328,13 @@ function init() {
         paletteFolder.addColor(paletteUniform, index)
 				.name(index)
 				.onChange(function(col) {
-                    //console.log(col, col.getHexString());
-					PaletteShaderPass.uniforms[ 'palette' ].value = paletteUniform;
+                    //console.log(col, col.getHexString(),col.convertLinearToSRGB().getHexString(), col.convertSRGBToLinear().getHexString() );
+					//var temp = new THREE.Color(col);
+                    //console.log(temp, temp.getHexString(),temp.convertLinearToSRGB().getHexString(), temp.convertSRGBToLinear().getHexString() )
+                    PaletteShaderPass.uniforms[ 'palette' ].value = paletteUniform;
                     let t=[];
-                    paletteUniform.forEach((e) => {t.push("0x" + e.getHexString());}); //convertLinearToSRGB()
+                    paletteUniform.forEach((e) => {t.push("0x" + e.clone().convertSRGBToLinear().getHexString());}); //convertLinearToSRGB()
+                    //paletteUniform.forEach((e) => {console.log("0x" + e.clone().convertSRGBToLinear().getHexString() +  ",");});
                     console.log(t.slice(0,paletteSource.length));
 				});
     }); 
@@ -371,7 +374,8 @@ function onWindowResize() {
     renderer.setSize( window.innerWidth, window.innerHeight );
     composer.setSize( window.innerWidth, window.innerHeight );
 
-    console.log(camera);
+    //console.log(camera);
+    //paletteUniform.forEach((e) => {console.log("0x" + e.convertSRGBToLinear().getHexString() +  ",");});
 
 }
 
