@@ -28,6 +28,12 @@ let camera, scene, renderer, composer, crystalMesh, clock;
 let gui, params;
 let sun, sky, water, cube, particleFireMesh0, light;
 
+// Initialize variables for smooth panning
+const panSpeed = 0.05;
+let panDirection = new THREE.Vector3();
+// Handle keyboard input
+let keyboardState= [];
+
 init();
 animate();
 
@@ -84,13 +90,15 @@ function init() {
     // const paletteSource = [0xFEA85A, 0xB24324, 0xDFB878, 0xF59965, 0xA0965C, 0x1A1B0F,
     //                         0x968B63, 0xD18733, 0xFA4120, 0xAE0C0E,
     //                         0x1D4128]
-    const paletteSource = [
-        //sun 
-        0xFFAC5D,
-        //sky 
-        0xC98C50, 0xD6A96F, 0x8C8754, 0xAF5A33, 0xA29663,
-        //base 
-        0x151108, 0x3D170E, 0x2A482D, 0x9B845C, 0xB32E22, 0x877A57, 0x925D41, 0x6C523B ]
+    // const paletteSource = [
+    //     //sun 
+    //     0xFFAC5D,
+    //     //sky 
+    //     0xC98C50, 0xD6A96F, 0x8C8754, 0xAF5A33, 0xA29663,
+    //     //base 
+    //     0x151108, 0x3D170E, 0x2A482D, 0x9B845C, 0xB32E22, 0x877A57, 0x925D41, 0x6C523B ]
+
+        const paletteSource = [0xfeac5d, 0xc98c50, 0xaf936e, 0x8c8754, 0xcc551e, 0xa29663, 0x2e2a1f, 0x000000, 0x2a482d, 0x9b845c, 0xb32e22, 0x877a57, 0x7d2a1c, 0xa79d6c]
         
         //0xD6B98A, 0xE29F5E, 0xB1A487, 0x97977A, 0x8B8E7A, 0x828A75, 0xCA6B2C, 0x6C7C6A, 0xD14521, 0x61725D, 0x263D2A, 0x283929, 0x2B382A, 0x1B150A, 0x161106, 0x161106]
 
@@ -107,6 +115,15 @@ function init() {
     composer.addPass( PaletteShaderPass );
 
     window.addEventListener( 'resize', onWindowResize );
+
+    
+    document.addEventListener('keydown', (event) => {
+    keyboardState[event.key] = true;
+    });
+
+    document.addEventListener('keyup', (event) => {
+    keyboardState[event.key] = false;
+    });
 
         // gui
 
@@ -190,7 +207,7 @@ function init() {
                 }
             })
             let s=10;
-            object.position.set( 0, -35,0 );
+            object.position.set( 0, -35.2,0 );
             object.rotation.set( - Math.PI / 2, 0,  0 );
             object.scale.set( s, s, s );
             scene.add(object)
@@ -395,7 +412,7 @@ function animate() {
 
     var delta = clock.getDelta();
 
-    particleFireMesh0.material.update( time / 10000 );
+    particleFireMesh0.material.update( time / 20000 );
 
     const rendererSize = renderer.getSize( new THREE.Vector2() );
     const aspectRatio = rendererSize.x / rendererSize.y;
@@ -414,6 +431,28 @@ function animate() {
         camera.updateProjectionMatrix();
 
     }
+
+    // handle keyboard
+    // Check keyboard input
+    panDirection.set(0, 0, 0);
+
+    if (keyboardState['ArrowUp']) {
+        panDirection.y += 1;
+    }
+    if (keyboardState['ArrowDown']) {
+        panDirection.y -= 1;
+    }
+    if (keyboardState['ArrowLeft']) {
+        panDirection.x -= 1;
+    }
+    if (keyboardState['ArrowRight']) {
+        panDirection.x += 1;
+    }
+
+    // Update camera position for panning
+    camera.position.x += panDirection.x * panSpeed;
+    camera.position.y += panDirection.y * panSpeed;
+    camera.lookAt(particleFireMesh0.position)
 
     composer.render();
 
@@ -493,8 +532,8 @@ function pixelAlignFrustum( camera, aspectRatio, pixelsPerScreenWidth, pixelsPer
 // Define the flicker animation
 function flickerAnimation(time) {
     // Randomly adjust the intensity and distance of the light
-    const intensity = (new ImprovedNoise().noise(time*2, 0, 0) * 10) + 20; //THREE.MathUtils.randFloat(0.8, 1.0);
-    const distance = (new ImprovedNoise().noise(time, 0, 0) * 2) + 20;
+    const intensity = (new ImprovedNoise().noise(time, 0, 0) * 3) + 21; //THREE.MathUtils.randFloat(0.8, 1.0);
+    const distance = (new ImprovedNoise().noise(time, 0, 0) * 0.3) + 21;
     light.intensity = intensity;
     light.distance = distance;
     var range = 0.1;
